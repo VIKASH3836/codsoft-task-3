@@ -1,0 +1,48 @@
+import torch
+import torch.nn as nn
+import torchvision.models as models
+
+# Define a CNN for feature extraction (e.g., ResNet50)
+cnn = models.resnet50(pretrained=True)
+modules = list(cnn.children())[:-1]
+cnn = nn.Sequential(*modules)
+
+# Define an LSTM-based captioning model
+class CaptioningModel(nn.Module):
+    def __init__(self, vocab_size, embed_size, hidden_size, num_layers):
+        super(CaptioningModel, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_size)
+        self.lstm = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, vocab_size)
+
+    def forward(self, image_features, captions):
+        embedded_captions = self.embedding(captions)
+        # Combine image features and embedded captions
+        combined_input = torch.cat((image_features.unsqueeze(1), embedded_captions), dim=1)
+        lstm_out, _ = self.lstm(combined_input)
+        outputs = self.fc(lstm_out)
+        return outputs
+
+# Create the model
+vocab_size = len(vocabulary)
+embed_size = 256
+hidden_size = 512
+num_layers = 1
+model = CaptioningModel(vocab_size, embed_size, hidden_size, num_layers)
+
+# Define loss and optimizer
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+# Training loop (pseudo-code)
+for epoch in range(num_epochs):
+    for images, captions in dataloader:
+        # Forward pass
+        image_features = cnn(images)
+        outputs = model(image_features, captions)
+        # Compute loss
+        loss = criterion(outputs.view(-1, vocab_size), captions.view(-1))
+        # Backpropagation and optimization
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
